@@ -216,6 +216,12 @@
     <Compile Include="Library\Function\FunctionConstructor.cs" />
     <Compile Include="Library\Object\ObjectConstructor.cs" />
     <Compile Include="Library\GlobalObject.cs" />
+    <Compile Include="Library\Promise\ClrPromiseExtensions.cs" />
+    <Compile Include="Library\Promise\PromiseConstructor.cs" />
+    <Compile Include="Library\Promise\PromiseConstructor.g.cs" />
+    <Compile Include="Library\Promise\PromiseInstance.cs" />
+    <Compile Include="Library\Promise\PromiseInstance.g.cs" />
+    <Compile Include="Library\Promise\PromiseState.cs" />
     <Compile Include="Library\RegExp\RegExpConstructor.cs" />
     <Compile Include="Library\RegExp\RegExpConstructor.g.cs" />
     <Compile Include="Library\RegExp\RegExpInstance.cs" />

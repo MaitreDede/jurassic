@@ -35,6 +35,7 @@ namespace Jurassic
         private SetConstructor setConstructor;
         private StringConstructor stringConstructor;
         private SymbolConstructor symbolConstructor;
+        private PromiseConstructor promiseConstructor;
 
         // The built-in error objects.
         private ErrorConstructor errorConstructor;
@@ -97,6 +98,7 @@ namespace Jurassic
             this.regExpConstructor = new RegExpConstructor(baseFunction);
             this.setConstructor = new SetConstructor(baseFunction);
             this.stringConstructor = new StringConstructor(baseFunction);
+            this.promiseConstructor = new PromiseConstructor(baseFunction);
 
             // Create the error functions.
             this.errorConstructor = new ErrorConstructor(baseFunction, ErrorType.Error);
@@ -138,6 +140,7 @@ namespace Jurassic
             globalProperties.Add(new PropertyNameAndValue("Object", this.objectConstructor, PropertyAttributes.NonEnumerable));
             globalProperties.Add(new PropertyNameAndValue("RegExp", this.regExpConstructor, PropertyAttributes.NonEnumerable));
             globalProperties.Add(new PropertyNameAndValue("Set", this.setConstructor, PropertyAttributes.NonEnumerable));
+            globalProperties.Add(new PropertyNameAndValue("Promise", this.promiseConstructor, PropertyAttributes.NonEnumerable));
             globalProperties.Add(new PropertyNameAndValue("String", this.stringConstructor, PropertyAttributes.NonEnumerable));
             globalProperties.Add(new PropertyNameAndValue("Symbol", this.symbolConstructor, PropertyAttributes.NonEnumerable));
             globalProperties.Add(new PropertyNameAndValue("Error", this.errorConstructor, PropertyAttributes.NonEnumerable));
@@ -217,6 +220,7 @@ namespace Jurassic
             this.setConstructor = (SetConstructor)info.GetValue("setConstructor", typeof(SetConstructor));
             this.stringConstructor = (StringConstructor)info.GetValue("stringConstructor", typeof(StringConstructor));
             this.symbolConstructor = (SymbolConstructor)info.GetValue("symbolConstructor", typeof(SymbolConstructor));
+            this.promiseConstructor = (PromiseConstructor)info.GetValue("promiseConstructor", typeof(PromiseConstructor));
 
             // Deserialize the built-in error objects.
             this.errorConstructor = (ErrorConstructor)info.GetValue("errorConstructor", typeof(ErrorConstructor));
@@ -272,6 +276,7 @@ namespace Jurassic
             info.AddValue("setConstructor", this.setConstructor);
             info.AddValue("stringConstructor", this.stringConstructor);
             info.AddValue("symbolConstructor", this.symbolConstructor);
+            info.AddValue("promiseConstructor", this.promiseConstructor);
 
             // Serialize the built-in error objects.
             info.AddValue("errorConstructor", this.errorConstructor);
@@ -511,6 +516,11 @@ namespace Jurassic
             get { return this.setConstructor; }
         }
 
+        public PromiseConstructor Promise
+        {
+            get { return this.promiseConstructor; }
+        }
+
         /// <summary>
         /// Gets the built-in String object.
         /// </summary>
@@ -722,7 +732,7 @@ namespace Jurassic
 
         //     EXECUTION
         //_________________________________________________________________________________________
-        
+
         /// <summary>
         /// Compiles the given source code and returns it in a form that can be executed many
         /// times.
@@ -793,7 +803,7 @@ namespace Jurassic
                 source,                             // The source code.
                 CreateOptions(),                    // The compiler options.
                 this.Global);                       // The value of the "this" keyword.
-            
+
             // Parse
             if (this.ParsingStarted != null)
                 this.ParsingStarted(this, EventArgs.Empty);
@@ -1373,6 +1383,30 @@ namespace Jurassic
                     this.staticTypeWrapperCache = new Dictionary<Type, ClrStaticTypeWrapper>();
                 return this.staticTypeWrapperCache;
             }
+        }
+
+        //Promises
+        private readonly List<PromiseInstance> m_promisesPendingFinalization = new List<PromiseInstance>();
+
+        internal void AddPromise(PromiseInstance promise)
+        {
+            this.m_promisesPendingFinalization.Add(promise);
+        }
+
+        public void ExecutePendingPromises(out bool hasRemainingPromises)
+        {
+            for (int i = 0; i < this.m_promisesPendingFinalization.Count; i++)
+            {
+                PromiseInstance prom = (this.m_promisesPendingFinalization[i]);
+                if (prom.IsFinalizable)
+                {
+                    prom.FinalizePromise();
+                    this.m_promisesPendingFinalization.RemoveAt(i);
+                    i--;
+                    continue;
+                }
+            }
+            hasRemainingPromises = this.m_promisesPendingFinalization.Count > 0;
         }
     }
 }
