@@ -24,7 +24,7 @@ namespace Jurassic.Library
         public MapInstance(ObjectInstance prototype)
             : base(prototype)
         {
-            this.store = new Dictionary<object, LinkedListNode<KeyValuePair<object, object>>>();
+            this.store = new Dictionary<object, LinkedListNode<KeyValuePair<object, object>>>(new SameValueZeroComparer());
             this.list = new LinkedList<KeyValuePair<object, object>>();
         }
 
@@ -117,7 +117,7 @@ namespace Jurassic.Library
         [JSInternalFunction(Name = "entries")]
         public ObjectInstance Entries()
         {
-            return new MapIterator(MapIterator.CreatePrototype(Engine), this, this.list, MapIterator.Kind.KeyAndValue);
+            return new MapIterator(Engine.MapIteratorPrototype, this, this.list, MapIterator.Kind.KeyAndValue);
         }
 
 
@@ -174,7 +174,7 @@ namespace Jurassic.Library
         [JSInternalFunction(Name = "keys")]
         public ObjectInstance Keys()
         {
-            return new MapIterator(MapIterator.CreatePrototype(Engine), this, this.list, MapIterator.Kind.Key);
+            return new MapIterator(Engine.MapIteratorPrototype, this, this.list, MapIterator.Kind.Key);
         }
 
         /// <summary>
@@ -188,6 +188,8 @@ namespace Jurassic.Library
         {
             if (this.store.ContainsKey(key))
                 return this;
+            if (key is double && TypeUtilities.IsNegativeZero((double)key))
+                key = 0;
             var node = this.list.AddLast(new KeyValuePair<object, object>(key, value));
             this.store.Add(key, node);
             return this;
@@ -201,7 +203,28 @@ namespace Jurassic.Library
         [JSInternalFunction(Name = "values")]
         public ObjectInstance Values()
         {
-            return new MapIterator(MapIterator.CreatePrototype(Engine), this, this.list, MapIterator.Kind.Value);
+            return new MapIterator(Engine.MapIteratorPrototype, this, this.list, MapIterator.Kind.Value);
+        }
+
+
+
+        //     HELPER CLASSES
+        //_________________________________________________________________________________________
+
+        /// <summary>
+        /// Implements the SameValueZero comparison operation.
+        /// </summary>
+        private class SameValueZeroComparer : IEqualityComparer<object>
+        {
+            public new bool Equals(object x, object y)
+            {
+                return TypeComparer.SameValueZero(x, y);
+            }
+
+            public int GetHashCode(object obj)
+            {
+                return TypeUtilities.NormalizeValue(obj).GetHashCode();
+            }
         }
     }
 }

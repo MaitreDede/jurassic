@@ -417,47 +417,31 @@ namespace Jurassic.Library
         /// <c>false</c> otherwise. </returns>
         public bool HasProperty(object key)
         {
-            // Check if the property is an indexed property.
+            // Check if the name of the property qualifies it as an indexed property.
             uint arrayIndex = ArrayInstance.ParseArrayIndex(key);
-            if (arrayIndex != uint.MaxValue)
-                return this.HasProperty(arrayIndex, this);
 
-            // Otherwise, the property is a name.
-            return this.HasProperty(key, this);
-        }
-
-        private bool HasProperty(int index, ObjectInstance thisValue)
-        {
-            // Get the descriptor for the property.
-            PropertyDescriptor property = this.GetOwnPropertyDescriptor(index);
-            if (property.Exists == true)
-            {
-                // The property was found!
-                return true;
-            }
-            // The property might exist in the prototype.
-            if (this.prototype == null)
-                return false;
-            return this.prototype.HasProperty(index, thisValue);
-        }
-
-        private bool HasProperty(object key, ObjectInstance thisValue)
-        {
             ObjectInstance prototypeObject = this;
             do
             {
-                // Retrieve information about the property.
-                var property = prototypeObject.schema.GetPropertyIndexAndAttributes(key);
-                if (property.Exists == true)
+                if (arrayIndex == uint.MaxValue)
                 {
-                    return true;
+                    // Named property.
+                    var property = prototypeObject.schema.GetPropertyIndexAndAttributes(key);
+                    if (property.Exists == true)
+                        return true;
+                }
+                else
+                {
+                    // Indexed property.
+                    var property = this.GetOwnPropertyDescriptor(arrayIndex);
+                    if (property.Exists == true)
+                        return true;
                 }
 
                 // Traverse the prototype chain.
                 prototypeObject = prototypeObject.prototype;
             } while (prototypeObject != null);
 
-            // The property doesn't exist.
             return false;
         }
 
@@ -1127,15 +1111,16 @@ namespace Jurassic.Library
         /// </summary>
         /// <param name="engine"> The associated script engine. </param>
         /// <param name="thisObject"> The object that is being operated on. </param>
-        /// <param name="propertyName"> The name of the property. </param>
+        /// <param name="key"> The property key (either a string or a Symbol). </param>
         /// <returns> <c>true</c> if a property with the given name exists on this object,
         /// <c>false</c> otherwise. </returns>
         /// <remarks> Objects in the prototype chain are not considered. </remarks>
         [JSInternalFunction(Name = "hasOwnProperty", Flags = JSFunctionFlags.HasEngineParameter | JSFunctionFlags.HasThisObject)]
-        public static bool HasOwnProperty(ScriptEngine engine, object thisObject, string propertyName)
+        public static bool HasOwnProperty(ScriptEngine engine, object thisObject, object key)
         {
+            key = TypeConverter.ToPropertyKey(key);
             TypeUtilities.VerifyThisObject(engine, thisObject, "hasOwnProperty");
-            return TypeConverter.ToObject(engine, thisObject).GetOwnPropertyDescriptor(propertyName).Exists;
+            return TypeConverter.ToObject(engine, thisObject).GetOwnPropertyDescriptor(key).Exists;
         }
 
         /// <summary>
@@ -1168,15 +1153,16 @@ namespace Jurassic.Library
         /// </summary>
         /// <param name="engine"> The associated script engine. </param>
         /// <param name="thisObject"> The object that is being operated on. </param>
-        /// <param name="propertyName"> The name of the property. </param>
+        /// <param name="key"> The property key (either a string or a Symbol). </param>
         /// <returns> <c>true</c> if a property with the given name exists on this object and is
         /// enumerable, <c>false</c> otherwise. </returns>
         /// <remarks> Objects in the prototype chain are not considered. </remarks>
         [JSInternalFunction(Name = "propertyIsEnumerable", Flags = JSFunctionFlags.HasEngineParameter | JSFunctionFlags.HasThisObject)]
-        public static bool PropertyIsEnumerable(ScriptEngine engine, object thisObject, string propertyName)
+        public static bool PropertyIsEnumerable(ScriptEngine engine, object thisObject, object key)
         {
+            key = TypeConverter.ToPropertyKey(key);
             TypeUtilities.VerifyThisObject(engine, thisObject, "propertyIsEnumerable");
-            var property = TypeConverter.ToObject(engine, thisObject).GetOwnPropertyDescriptor(propertyName);
+            var property = TypeConverter.ToObject(engine, thisObject).GetOwnPropertyDescriptor(key);
             return property.Exists && property.IsEnumerable;
         }
 
